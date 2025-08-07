@@ -9,7 +9,7 @@ description = "LangChain integration for the Moorcheh vector database"
 authors = [
   { name = "EdgeAI Innovations" },
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10,<4.0"
 readme = "README.md"
 license = { text = "MIT" }
 dependencies = [
