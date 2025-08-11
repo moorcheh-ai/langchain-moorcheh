@@ -13,7 +13,6 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-# Use Literal for namespace type
 NamespaceType = Literal["text", "vector"]
 VST = TypeVar("VST", bound=VectorStore)
 
@@ -166,7 +165,7 @@ class MoorchehVectorStore(VectorStore):
 
     def upload_vectors(
         self,
-        vectors: List[Tuple[str, List[float], Optional[dict]]],  # (id, vector, metadata)
+        vectors: List[Tuple[str, List[float], Optional[dict]]],   
     ) -> List[str]:
         if self.namespace_type != "vector":
             raise ValueError("upload_vectors is only valid for 'vector' namespaces.")
@@ -247,16 +246,13 @@ class MoorchehVectorStore(VectorStore):
           scored_langchain_docs: List[Tuple[Document, float]] = []
 
           for result in results:
-              # score
               try:
                   score = float(result.get("score", 0.0))
               except Exception:
                   score = 0.0
 
-              # text
               page_content = result.get("text") or result.get("text_content", "")
 
-              # id with fallbacks
               doc_id = result.get("id")
               if doc_id is None:
                   doc_id = result.get("ids")
@@ -265,7 +261,6 @@ class MoorchehVectorStore(VectorStore):
               if doc_id is not None:
                   doc_id = str(doc_id)
 
-              # flatten metadata
               meta_raw = result.get("metadata") or {}
               if isinstance(meta_raw, dict) and "metadata" in meta_raw and isinstance(meta_raw["metadata"], dict) and len(meta_raw) == 1:
                   metadata = meta_raw["metadata"]
@@ -302,48 +297,42 @@ class MoorchehVectorStore(VectorStore):
     def get_by_ids(self, ids: List[str]) -> List[Document]:
         if not ids:
             return []
+       
+        try:
+            resp = self._client.get_documents(
+                namespace_name=self.namespace,
+                ids=ids
+            )
+            items = resp.get("documents") or resp.get("items") or []
+            docs: List[Document] = []
+            for d in items:
+                text = d.get("text") or d.get("text_content") or ""
+                meta_raw = d.get("metadata") or {}
+                if isinstance(meta_raw, dict) and "metadata" in meta_raw and isinstance(meta_raw["metadata"], dict) and len(meta_raw) == 1:
+                    meta = meta_raw["metadata"]
+                else:
+                    meta = meta_raw
 
-        # tolerate eventual consistency / 207 partial
-        import time
-        max_attempts = 10  # ~1s total
-        for _ in range(max_attempts):
-            try:
-                resp = self._client.get_documents(
-                    namespace_name=self.namespace,
-                    ids=ids
-                )
-                items = resp.get("documents") or resp.get("items") or []
-                docs: List[Document] = []
-                for d in items:
-                    text = d.get("text") or d.get("text_content") or ""
-                    meta_raw = d.get("metadata") or {}
-                    if isinstance(meta_raw, dict) and "metadata" in meta_raw and isinstance(meta_raw["metadata"], dict) and len(meta_raw) == 1:
-                        meta = meta_raw["metadata"]
-                    else:
-                        meta = meta_raw
-
-                    # id from item.id or fallback to metadata.id / ids
-                    doc_id = d.get("id")
-                    if doc_id is None:
-                        doc_id = d.get("ids")
-                        if isinstance(doc_id, list):
-                            doc_id = doc_id[0] if doc_id else None
-                    if doc_id is None:
-                        alt = meta.get("id") or meta.get("ids")
-                        if isinstance(alt, list):
-                            alt = alt[0] if alt else None
+                doc_id = d.get("id")
+                if doc_id is None:
+                    doc_id = d.get("ids")
+                    if isinstance(doc_id, list):
+                        doc_id = doc_id[0] if doc_id else None
+                if doc_id is None:
+                    alt = meta.get("id") or meta.get("ids")
+                    if isinstance(alt, list):
+                        alt = alt[0] if alt else None
                         doc_id = alt
-                    if doc_id is not None:
-                        doc_id = str(doc_id)
+                if doc_id is not None:
+                     doc_id = str(doc_id)
 
-                    docs.append(Document(page_content=text, metadata=meta, id=doc_id))
+            docs.append(Document(page_content=text, metadata=meta, id=doc_id))
 
-                # preserve requested order and drop missing
-                by_id = {doc.id: doc for doc in docs if doc.id is not None}
-                return [by_id[i] for i in ids if i in by_id]
+            by_id = {doc.id: doc for doc in docs if doc.id is not None}
+            return [by_id[i] for i in ids if i in by_id]
 
-            except Exception:
-                time.sleep(0.1)
+        except Exception:
+            time.sleep(0.1)
 
         return []
         
@@ -424,7 +413,6 @@ class MoorchehVectorStore(VectorStore):
                     )
                 assigned_ids.append(doc_id)
 
-                # keep user metadata intact (do NOT inject id)
                 metadata = (doc.metadata or {}).copy()
 
                 moorcheh_docs_to_upload.append(
@@ -441,7 +429,7 @@ class MoorchehVectorStore(VectorStore):
 
     async def aupload_vectors(
             self,
-            vectors: List[Tuple[str, List[float], Optional[dict]]],  # (id, vector, metadata)
+            vectors: List[Tuple[str, List[float], Optional[dict]]],   
         ) -> List[str]:
             if self.namespace_type != "vector":
                 raise ValueError("upload_vectors is only valid for 'vector' namespaces.")
@@ -468,7 +456,6 @@ class MoorchehVectorStore(VectorStore):
             filter: Optional[dict] = None,
             **kwargs: Any,
         ) -> List[Document]:
-            # mirror sync: pass through **kwargs (e.g., threshold, kiosk_mode)
             search_results = await asyncio.to_thread(
                 self._client.search,
                 namespaces=[self.namespace],
@@ -489,7 +476,6 @@ class MoorchehVectorStore(VectorStore):
             for result in raw_items:
                 page_content = result.get("text") or result.get("text_content", "")
 
-                # id: prefer 'id', fallback to first element of 'ids'
                 doc_id = result.get("id")
                 if doc_id is None:
                     alt = result.get("ids")
@@ -497,7 +483,6 @@ class MoorchehVectorStore(VectorStore):
                         doc_id = alt[0] if alt else None
                 doc_id = str(doc_id) if doc_id is not None else None
 
-                # flatten nested metadata { "metadata": {...} } -> {...}
                 meta_raw = result.get("metadata") or {}
                 if (
                     isinstance(meta_raw, dict)
@@ -580,48 +565,47 @@ class MoorchehVectorStore(VectorStore):
     async def aget_by_ids(self, ids: List[str]) -> List[Document]:
             if not ids:
                 return []
+                
+            try:
+                response = await asyncio.to_thread(
+                    self._client.get_documents,
+                    namespace_name=self.namespace,
+                    ids=ids,
+                )
+                
+                items = response.get("documents") or response.get("items") or []
+                lc_docs: List[Document] = []
 
-            # mirror sync: tolerate 207/partial + preserve requested order
-            for _ in range(10):
-                try:
-                    response = await asyncio.to_thread(
-                        self._client.get_documents,
-                        namespace_name=self.namespace,
-                        ids=ids,
-                    )
-                    items = response.get("documents") or response.get("items") or []
-                    lc_docs: List[Document] = []
+                for d in items:
+                    text = d.get("text") or d.get("text_content") or ""
 
-                    for d in items:
-                        text = d.get("text") or d.get("text_content") or ""
+                    meta_raw = d.get("metadata") or {}
+                    if (
+                        isinstance(meta_raw, dict)
+                        and "metadata" in meta_raw
+                        and isinstance(meta_raw["metadata"], dict)
+                        and len(meta_raw) == 1
+                    ):
+                        meta = meta_raw["metadata"]
+                    else:
+                        meta = meta_raw
 
-                        meta_raw = d.get("metadata") or {}
-                        if (
-                            isinstance(meta_raw, dict)
-                            and "metadata" in meta_raw
-                            and isinstance(meta_raw["metadata"], dict)
-                            and len(meta_raw) == 1
-                        ):
-                            meta = meta_raw["metadata"]
-                        else:
-                            meta = meta_raw
+                    doc_id = d.get("id")
+                    if doc_id is None:
+                        alt = d.get("ids")
+                        if isinstance(alt, list):
+                            doc_id = alt[0] if alt else None
+                    if doc_id is None:
+                        alt = meta.get("id") or meta.get("ids")
+                        if isinstance(alt, list):
+                            alt = alt[0] if alt else None
+                        doc_id = alt
+                    doc_id = str(doc_id) if doc_id is not None else None
 
-                        doc_id = d.get("id")
-                        if doc_id is None:
-                            alt = d.get("ids")
-                            if isinstance(alt, list):
-                                doc_id = alt[0] if alt else None
-                        if doc_id is None:
-                            alt = meta.get("id") or meta.get("ids")
-                            if isinstance(alt, list):
-                                alt = alt[0] if alt else None
-                            doc_id = alt
-                        doc_id = str(doc_id) if doc_id is not None else None
+                    lc_docs.append(Document(page_content=text, metadata=meta, id=doc_id))
 
-                        lc_docs.append(Document(page_content=text, metadata=meta, id=doc_id))
-
-                    by_id = {doc.id: doc for doc in lc_docs if doc.id is not None}
-                    return [by_id[i] for i in ids if i in by_id]
+                by_id = {doc.id: doc for doc in lc_docs if doc.id is not None}
+                return [by_id[i] for i in ids if i in by_id]
 
                 except Exception:
                     await asyncio.sleep(0.1)
