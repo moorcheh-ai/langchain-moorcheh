@@ -466,9 +466,6 @@ class MoorchehVectorStore(VectorStore):
 
             raw_items = (
                 search_results.get("results")
-                or search_results.get("items")
-                or search_results.get("documents")
-                or search_results.get("matches")
                 or []
             )
 
@@ -512,9 +509,6 @@ class MoorchehVectorStore(VectorStore):
 
             raw_items = (
                 search_results.get("results")
-                or search_results.get("items")
-                or search_results.get("documents")
-                or search_results.get("matches")
                 or []
             )
 
