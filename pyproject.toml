@@ -6,17 +6,17 @@ build-backend = "poetry.core.masonry.api"
 name = "langchain-moorcheh"
 version = "0.1.0"
 description = "An integration package connecting Moorcheh and LangChain"
-authors = ["Moorcheh"]
+authors = []
 readme = "README.md"
-repository = "https://github.com/moorcheh-ai/moorcheh-langchain-integration"
+repository = "https://github.com/langchain-ai/langchain"
 license = "MIT"
 
 [tool.mypy]
 disallow_untyped_defs = "True"
 
 [tool.poetry.urls]
-"Source Code" = "https://github.com/moorcheh-ai/moorcheh-langchain-integration"
-"Release Notes" = "https://github.com/moorcheh-ai/moorcheh-langchain"
+"Source Code" = "https://github.com/langchain-ai/langchain/tree/master/libs/partners/moorcheh"
+"Release Notes" = "https://github.com/langchain-ai/langchain/releases?q=tag%3A%22moorcheh%3D%3D0%22&expanded=true"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
