@@ -52,7 +52,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
         mock_results = {
             "results": [
                 {
-                    "text_content": "Mocked result",
+                    "text": "Mocked result",
                     "metadata": {"source": "mock"},
                     "score": 0.88,
                 }
@@ -67,7 +67,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
 
     def test_get_by_ids(self):
         self.store._client.get_documents.return_value = {
-            "documents": [{"text": "Doc by ID", "metadata": {"id": "123"}}]
+            "documents": [{"id": "123", "text": "Doc by ID", "metadata": {"id": "123"}}]
         }
 
         # Corrected line: remove the namespace_name keyword argument
