@@ -196,8 +196,6 @@ jobs:
       - test-pypi-publish
       - pre-release-checks
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
     permissions:
       # This permission is used for trusted publishing:
       # https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
