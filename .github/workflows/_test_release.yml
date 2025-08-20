@@ -15,7 +15,6 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  UV_FROZEN: "true"
 
 jobs:
   build:
@@ -29,10 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       # We want to keep this build stage *separate* from the release stage,
       # so that there's no sharing of permissions between them.
@@ -46,7 +52,7 @@ jobs:
       # > from the publish job.
       # https://github.com/pypa/gh-action-pypi-publish#non-goals
       - name: Build project for distribution
-        run: uv build
+        run: poetry build
         working-directory: ${{ inputs.working-directory }}
 
       - name: Upload build
@@ -79,7 +85,7 @@ jobs:
       # https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
       #
       # Trusted publishing has to also be configured on PyPI for each package:
-      # https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+      # https://docs.pypa/trusted-publishers/adding-a-publisher/
       id-token: write
 
     steps:

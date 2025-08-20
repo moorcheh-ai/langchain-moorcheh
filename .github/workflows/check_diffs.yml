@@ -17,8 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UV_FROZEN: "true"
-  UV_NO_SYNC: "true"
+  POETRY_VERSION: "2.1.3"
 
 jobs:
   build:

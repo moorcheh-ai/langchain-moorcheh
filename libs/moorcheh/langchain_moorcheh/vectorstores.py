@@ -401,7 +401,7 @@ class MoorchehVectorStore(VectorStore):
     
             # Preserve input order
             by_id = {doc.id: doc for doc in docs if doc.id is not None}
-            return [by_id[i] for str(i) in ids if str(i) in by_id]
+            return [by_id[str(i)] for i in ids if str(i) in by_id]
         except APIError as e:
             # IDs don't exist in the namespace. 
             if "207" in str(e) or "Unexpected response format from get documents endpoint" in str(e):

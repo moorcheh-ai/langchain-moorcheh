@@ -2,7 +2,8 @@ import json
 import sys
 from typing import Dict
 
-LIB_DIRS = ["libs/{lib}"]
+# Updated to match the actual project structure
+LIB_DIRS = ["libs/moorcheh"]
 
 if __name__ == "__main__":
     files = sys.argv[1:]
@@ -29,15 +30,12 @@ if __name__ == "__main__":
             # add all LANGCHAIN_DIRS for infra changes
             dirs_to_run["test"].update(LIB_DIRS)
 
-        if any(file.startswith(dir_) for dir_ in LIB_DIRS):
-            for dir_ in LIB_DIRS:
-                if file.startswith(dir_):
-                    dirs_to_run["test"].add(dir_)
+        # Check if file is in the main package directory or tests
+        if any(file.startswith(dir_) for dir_ in ["libs/moorcheh/langchain_moorcheh/", "libs/moorcheh/tests/", "libs/moorcheh/docs/"]):
+            dirs_to_run["test"].add("libs/moorcheh")
         elif file.startswith("libs/"):
-            raise ValueError(
-                f"Unknown lib: {file}. check_diff.py likely needs "
-                "an update for this new library!"
-            )
+            # This is now expected for our structure
+            dirs_to_run["test"].add("libs/moorcheh")
 
     outputs = {
         "dirs-to-lint": list(dirs_to_run["lint"] | dirs_to_run["test"]),
