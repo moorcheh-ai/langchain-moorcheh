@@ -11,8 +11,8 @@ OPENAI_API_KEY = "test-openai-key"
 NAMESPACE_NAME = "test-namespace"
 NAMESPACE_TYPE = "text"
 
-class TestMoorchehVectorStore(unittest.TestCase):
 
+class TestMoorchehVectorStore(unittest.TestCase):
     @patch("langchain_moorcheh.vectorstores.MoorchehClient")
     def setUp(self, mock_client_class):
         self.mock_client = MagicMock()
@@ -144,6 +144,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
     def test_delete_no_ids(self):
         result = self.store.delete(ids=None)
         self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
