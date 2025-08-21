@@ -1,20 +1,22 @@
 import unittest
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
+from typing_extensions import Literal
 
 from langchain_moorcheh import MoorchehVectorStore
 
 MOORCHEH_API_KEY = "test-api-key"
 OPENAI_API_KEY = "test-openai-key"
 NAMESPACE_NAME = "test-namespace"
-NAMESPACE_TYPE = "text"
+NAMESPACE_TYPE: Literal["text", "vector"] = "text"
 
 
 class TestMoorchehVectorStore(unittest.TestCase):
     @patch("langchain_moorcheh.vectorstores.MoorchehClient")
-    def setUp(self, mock_client_class):
+    def setUp(self, mock_client_class: Any) -> None:
         self.mock_client = MagicMock()
         mock_client_class.return_value = self.mock_client
         self.mock_client.list_namespaces.return_value = {"namespaces": []}
@@ -29,7 +31,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
             embedding=self.embedding,
         )
 
-    def test_add_documents(self):
+    def test_add_documents(self) -> None:
         documents = [Document(page_content="Test content", metadata={"source": "unit"})]
         self.store._client.upload_documents = MagicMock()
         added_ids = self.store.add_documents(documents=documents)
@@ -37,7 +39,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.assertEqual(len(added_ids), 1)
         self.store._client.upload_documents.assert_called_once()
 
-    def test_similarity_search(self):
+    def test_similarity_search(self) -> None:
         mock_results = {
             "results": [
                 {"text": "Mocked result", "metadata": {"source": "mock"}},
@@ -50,7 +52,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.assertEqual(results[0].page_content, "Mocked result")
         self.assertEqual(results[0].metadata["source"], "mock")
 
-    def test_similarity_search_with_score(self):
+    def test_similarity_search_with_score(self) -> None:
         mock_results = {
             "results": [
                 {
@@ -67,7 +69,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.assertEqual(results[0][0].page_content, "Mocked result")
         self.assertAlmostEqual(results[0][1], 0.88, places=2)
 
-    def test_get_by_ids(self):
+    def test_get_by_ids(self) -> None:
         self.store._client.get_documents.return_value = {
             "items": [{"id": "123", "text": "Doc by ID", "metadata": {"id": "123"}}]
         }
@@ -78,30 +80,30 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.assertEqual(results[0].page_content, "Doc by ID")
         self.assertEqual(results[0].metadata["id"], "123")
 
-    def test_delete_documents(self):
+    def test_delete_documents(self) -> None:
         self.store._client.delete_documents = MagicMock()
         success = self.store.delete(ids=["id1", "id2"])
         self.assertTrue(success)
         self.store._client.delete_documents.assert_called_once()
 
-    def test_delete_vectors(self):
+    def test_delete_vectors(self) -> None:
         self.store.namespace_type = "vector"
         self.store._client.delete_vectors = MagicMock()
         success = self.store.delete(ids=["v1", "v2"])
         self.assertTrue(success)
         self.store._client.delete_vectors.assert_called_once()
 
-    def test_upload_vectors(self):
+    def test_upload_vectors(self) -> None:
         self.store.namespace_type = "vector"
         self.store._client.upload_vectors = MagicMock()
 
         vectors = [("id1", [0.1] * 1536, {"tag": "test"})]
-        returned_ids = self.store.upload_vectors(vectors)
+        returned_ids = self.store.upload_vectors(vectors)  # type: ignore[arg-type]
 
         self.assertEqual(returned_ids, ["id1"])
         self.store._client.upload_vectors.assert_called_once()
 
-    def test_from_texts(self):
+    def test_from_texts(self) -> None:
         with patch(
             "langchain_moorcheh.vectorstores.MoorchehClient",
             return_value=self.mock_client,
@@ -124,14 +126,14 @@ class TestMoorchehVectorStore(unittest.TestCase):
             self.assertIsInstance(store, MoorchehVectorStore)
             self.mock_client.upload_documents.assert_called_once()
 
-    def test_generative_answer(self):
+    def test_generative_answer(self) -> None:
         self.store._client.get_generative_answer.return_value = {
             "answer": "This is an answer."
         }
         result = self.store.generative_answer("test query", k=1)
         self.assertEqual(result, "This is an answer.")
 
-    def test_add_documents_with_ids(self):
+    def test_add_documents_with_ids(self) -> None:
         self.store._client.upload_documents = MagicMock()
 
         docs = [Document(page_content="text", metadata={})]
@@ -141,7 +143,7 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.assertEqual(returned_ids, ids)
         self.store._client.upload_documents.assert_called_once()
 
-    def test_delete_no_ids(self):
+    def test_delete_no_ids(self) -> None:
         result = self.store.delete(ids=None)
         self.assertFalse(result)
 

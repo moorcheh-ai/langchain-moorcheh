@@ -1,20 +1,22 @@
+import os
 import uuid
-from typing import Generator
+from typing import Any
 
 import pytest
-from langchain_core.vectorstores import VectorStore
 from langchain_tests.integration_tests.vectorstores import VectorStoreIntegrationTests
+from typing_extensions import Literal
 
 from langchain_moorcheh import MoorchehVectorStore
 
-MOORCHEH_API_KEY = "test-api-key"  # Place your moorcheh API key
+MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "test-api-key")  # Read from environment or use dummy
 NAMESPACE_NAME = "test-integration-ns"
-NAMESPACE_TYPE = "text"
+NAMESPACE_TYPE: Literal["text", "vector"] = "text"
 
 
+@pytest.mark.compile
 class TestMoorchehVectorStore(VectorStoreIntegrationTests):
     @pytest.fixture()
-    def vectorstore(self) -> Generator[VectorStore, None, None]:
+    def vectorstore(self) -> Any:
         """Get an empty Moorcheh vectorstore for integration tests."""
         if not MOORCHEH_API_KEY:
             pytest.skip("MOORCHEH_API_KEY not set. Skipping integration test.")

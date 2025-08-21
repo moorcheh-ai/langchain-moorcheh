@@ -41,6 +41,8 @@ jobs:
 
       - name: Check integration tests compile
         shell: bash
+        env:
+          MOORCHEH_API_KEY: ${{ secrets.MOORCHEH_API_KEY }}
         run: poetry run pytest -m compile tests/integration_tests
 
       - name: Ensure the tests did not create any additional files
