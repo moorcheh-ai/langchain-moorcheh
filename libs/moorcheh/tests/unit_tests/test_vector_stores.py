@@ -1,7 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
+
 from langchain_moorcheh import MoorchehVectorStore
 
 MOORCHEH_API_KEY = "test-api-key"
@@ -100,7 +102,10 @@ class TestMoorchehVectorStore(unittest.TestCase):
         self.store._client.upload_vectors.assert_called_once()
 
     def test_from_texts(self):
-        with patch("langchain_moorcheh.vectorstores.MoorchehClient", return_value=self.mock_client):
+        with patch(
+            "langchain_moorcheh.vectorstores.MoorchehClient",
+            return_value=self.mock_client,
+        ):
             self.mock_client.list_namespaces.return_value = {"namespaces": []}
             self.mock_client.upload_documents = MagicMock()
 
