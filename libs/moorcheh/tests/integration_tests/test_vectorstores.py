@@ -10,6 +10,7 @@ MOORCHEH_API_KEY = "test-api-key" #Place your moorcheh API key
 NAMESPACE_NAME = "test-integration-ns"
 NAMESPACE_TYPE = "text"
 
+
 class TestMoorchehVectorStore(VectorStoreIntegrationTests):
     @pytest.fixture()
     def vectorstore(self) -> Generator[VectorStore, None, None]:   
