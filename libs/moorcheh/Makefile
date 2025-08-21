@@ -35,7 +35,7 @@ lint_tests: MYPY_CACHE=.mypy_cache_test
 lint lint_diff lint_package lint_tests:
 	@if not "$(PYTHON_FILES)"=="" poetry run ruff check $(PYTHON_FILES)
 	@if not "$(PYTHON_FILES)"=="" poetry run ruff format $(PYTHON_FILES) --diff
-	@if not "$(PYTHON_FILES)"=="" (if not exist $(MYPY_CACHE) mkdir $(MYPY_CACHE)) & poetry run mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
+	@if not "$(PYTHON_FILES)"=="" poetry run mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
 
 format format_diff:
 	@if not "$(PYTHON_FILES)"=="" poetry run ruff format $(PYTHON_FILES)

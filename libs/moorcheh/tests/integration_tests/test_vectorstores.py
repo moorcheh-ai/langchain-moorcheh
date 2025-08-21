@@ -8,7 +8,7 @@ from typing_extensions import Literal
 
 from langchain_moorcheh import MoorchehVectorStore
 
-MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "test-api-key")  # Read from environment or use dummy
+MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "test-api-key")
 NAMESPACE_NAME = "test-integration-ns"
 NAMESPACE_TYPE: Literal["text", "vector"] = "text"
 
