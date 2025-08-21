@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.9"
+          - "3.10"
           - "3.12"
     name: "make test #${{ matrix.python-version }}"
     steps:
@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: poetry install --group test --group dev
+        run: poetry install --with test --with dev
 
       - name: Run core tests
         shell: bash

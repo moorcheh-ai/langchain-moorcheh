@@ -28,7 +28,7 @@ jobs:
         # Starting new jobs is also relatively slow,
         # so linting on fewer versions makes CI faster.
         python-version:
-          - "3.9"
+          - "3.10"
           - "3.12"
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
         # https://github.com/langchain-ai/langchain/pull/10249/files#diff-935185cd488d015f026dcd9e19616ff62863e8cde8c0bee70318d3ccbca98341
         working-directory: ${{ inputs.working-directory }}
         run: |
-          poetry install --group lint --group typing
+          poetry install --with lint --with typing
 
       - name: Analysing the code with our lint
         working-directory: ${{ inputs.working-directory }}
@@ -62,7 +62,7 @@ jobs:
       - name: Install unit+integration test dependencies
         working-directory: ${{ inputs.working-directory }}
         run: |
-          poetry install --group test --group test_integration
+          poetry install --with test --with test_integration
 
       - name: Analysing the code with our lint
         working-directory: ${{ inputs.working-directory }}
