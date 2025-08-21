@@ -12,7 +12,7 @@ on:
       working-directory:
         required: true
         type: string
-        default: 'libs/{lib}'
+        default: 'libs/moorcheh'
       dangerous-nonmaster-release:
         required: false
         type: boolean
@@ -21,8 +21,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  UV_FROZEN: "true"
-  UV_NO_SYNC: "true"
+  POETRY_VERSION: "2.1.3"
 
 jobs:
   build:
@@ -36,10 +35,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       # We want to keep this build stage *separate* from the release stage,
       # so that there's no sharing of permissions between them.
@@ -53,7 +59,7 @@ jobs:
       # > from the publish job.
       # https://github.com/pypa/gh-action-pypi-publish#non-goals
       - name: Build project for distribution
-        run: uv build
+        run: poetry build
         working-directory: ${{ inputs.working-directory }}
 
       - name: Upload build
@@ -109,11 +115,18 @@ jobs:
       # - The package is published, and it breaks on the missing dependency when
       #   used in the real world.
 
-      - name: Set up Python + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         id: setup-python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -136,17 +149,14 @@ jobs:
         # - attempt install again after 5 seconds if it fails because there is
         #   sometimes a delay in availability on test pypi
         run: |
-          uv venv
-          VIRTUAL_ENV=.venv uv pip install dist/*.whl
-
           # Replace all dashes in the package name with underscores,
           # since that's how Python imports packages with dashes in the name.
           IMPORT_NAME="$(echo "$PKG_NAME" | sed s/-/_/g)"
 
-          uv run python -c "import $IMPORT_NAME; print(dir($IMPORT_NAME))"
+          poetry run python -c "import $IMPORT_NAME; print(dir($IMPORT_NAME))"
 
       - name: Import test dependencies
-        run: uv sync --group test
+        run: poetry install --group test
         working-directory: ${{ inputs.working-directory }}
 
       # Overwrite the local version of the package with the built version
@@ -157,7 +167,7 @@ jobs:
           PKG_NAME: ${{ needs.build.outputs.pkg-name }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
-          VIRTUAL_ENV=.venv uv pip install dist/*.whl
+          poetry install
 
       - name: Run unit tests
         run: make tests
@@ -167,7 +177,7 @@ jobs:
         env:
           PARTNER_API_KEY: ${{ secrets.PARTNER_API_KEY }}
         run: |
-          uv sync --group test --group test_integration
+          poetry install --group test --group test_integration
           make integration_tests
         working-directory: ${{ inputs.working-directory }}
 
@@ -175,9 +185,9 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         id: min-version
         run: |
-          VIRTUAL_ENV=.venv uv pip install packaging requests
-          python_version="$(uv run python --version | awk '{print $2}')"
-          min_versions="$(uv run python $GITHUB_WORKSPACE/.github/scripts/get_min_versions.py pyproject.toml release $python_version)"
+          poetry add packaging requests
+          python_version="$(poetry run python --version | awk '{print $2}')"
+          min_versions="$(poetry run python $GITHUB_WORKSPACE/.github/scripts/get_min_versions.py pyproject.toml release $python_version)"
           echo "min-versions=$min_versions" >> "$GITHUB_OUTPUT"
           echo "min-versions=$min_versions"
 
@@ -186,7 +196,7 @@ jobs:
         env:
           MIN_VERSIONS: ${{ steps.min-version.outputs.min-versions }}
         run: |
-          VIRTUAL_ENV=.venv uv pip install $MIN_VERSIONS
+          poetry add $MIN_VERSIONS
           make tests
         working-directory: ${{ inputs.working-directory }}
 
@@ -201,7 +211,7 @@ jobs:
       # https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
       #
       # Trusted publishing has to also be configured on PyPI for each package:
-      # https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+      # https://docs.pypa/trusted-publishers/adding-a-publisher/
       id-token: write
 
     defaults:
@@ -211,10 +221,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -249,10 +266,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - uses: actions/download-artifact@v4
         with:

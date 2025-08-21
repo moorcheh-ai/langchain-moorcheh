@@ -8,9 +8,6 @@ on:
         type: string
         description: "From which folder this pipeline executes"
 
-env:
-  UV_FROZEN: "true"
-
 jobs:
   build:
     defaults:
@@ -22,22 +19,29 @@ jobs:
         python-version:
           - "3.9"
           - "3.12"
-    name: "uv run pytest -m compile tests/integration_tests"
+    name: "poetry run pytest -m compile tests/integration_tests"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }} + uv
-        uses: "./.github/actions/uv_setup"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
       - name: Install integration dependencies
         shell: bash
-        run: uv sync --group test --group test_integration
+        run: poetry install --group test --group test_integration
 
       - name: Check integration tests compile
         shell: bash
-        run: uv run pytest -m compile tests/integration_tests
+        run: poetry run pytest -m compile tests/integration_tests
 
       - name: Ensure the tests did not create any additional files
         shell: bash
