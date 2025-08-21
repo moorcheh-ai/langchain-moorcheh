@@ -443,12 +443,12 @@ class MoorchehVectorStore(VectorStore):
             return [by_id[str(i)] for i in ids if str(i) in by_id]
         except APIError as e:
             # Check if this is a Status 207 (partial success) case
-            if "207" in str(e) or "Unexpected response format from get documents endpoint" in str(e):
-                # Status 207 means partial success - the SDK incorrectly treats this as an error
-              
+            if "207" in str(
+                e
+            ) or "Unexpected response format from get documents endpoint" in str(e):
+                # Status 207 means partial success - SDK treats as error
                 try:
-
-                    logger.warning(f"Status 207 received (partial success) but SDK treated as error: {e}")
+                    logger.warning(f"Status 207 received but SDK treated as error: {e}")
                     return []
                 except Exception:
                     # If we can't parse the response, return empty list
@@ -735,9 +735,11 @@ class MoorchehVectorStore(VectorStore):
             )
         except APIError as e:
             # Check if this is a Status 207 (partial success) case
-            if "207" in str(e) or "Unexpected response format from get documents endpoint" in str(e):
-                # Status 207 means partial success - the SDK incorrectly treats this as an error
-                logger.warning(f"Status 207 received (partial success) but SDK treated as error: {e}")
+            if "207" in str(
+                e
+            ) or "Unexpected response format from get documents endpoint" in str(e):
+                # Status 207 means partial success - SDK treats as error
+                logger.warning(f"Status 207 received but SDK treated as error: {e}")
                 return []
             # For other API errors, re-raise
             raise
