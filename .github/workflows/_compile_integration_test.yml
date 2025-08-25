@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.9"
+          - "3.10"
           - "3.12"
     name: "poetry run pytest -m compile tests/integration_tests"
     steps:
@@ -37,10 +37,12 @@ jobs:
 
       - name: Install integration dependencies
         shell: bash
-        run: poetry install --group test --group test_integration
+        run: poetry install --with test --with test_integration
 
       - name: Check integration tests compile
         shell: bash
+        env:
+          MOORCHEH_API_KEY: ${{ secrets.MOORCHEH_API_KEY }}
         run: poetry run pytest -m compile tests/integration_tests
 
       - name: Ensure the tests did not create any additional files
