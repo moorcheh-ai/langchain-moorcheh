@@ -12,6 +12,7 @@ MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "test-api-key")
 NAMESPACE_NAME = "test-integration-ns"
 NAMESPACE_TYPE: Literal["text", "vector"] = "text"
 
+
 @pytest.mark.compile
 class TestMoorchehVectorStore(VectorStoreIntegrationTests):
     @pytest.fixture()
