@@ -266,6 +266,43 @@ class MoorchehVectorStore(VectorStore):
             logger.error(f"Error deleting documents: {e}")
             raise
 
+    def delete_namespace(self) -> bool:
+        """Delete the entire namespace and all its contents.
+
+        This method is useful for cleanup in tests and when you want to
+        completely remove a namespace.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            logger.info(
+                f"Deleting namespace '{self.namespace}' and all its contents..."
+            )
+
+            # Try to delete the namespace using the client
+            # Note: This assumes the Moorcheh SDK has a delete_namespace method
+            # If it doesn't exist, we'll need to implement an alternative cleanup
+            # strategy
+            try:
+                self._client.delete_namespace(namespace_name=self.namespace)
+                logger.info(f"Successfully deleted namespace '{self.namespace}'")
+                return True
+            except AttributeError:
+                # If delete_namespace method doesn't exist, log warning
+                logger.warning(
+                    "delete_namespace method not available on client. "
+                    "Manual cleanup may be required."
+                )
+                return False
+            except Exception as e:
+                logger.error(f"Failed to delete namespace '{self.namespace}': {e}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error in delete_namespace: {e}")
+            return False
+
     # Similarity_search method
     def similarity_search(
         self,

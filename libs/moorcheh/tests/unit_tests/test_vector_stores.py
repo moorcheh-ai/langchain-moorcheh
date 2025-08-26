@@ -147,6 +147,18 @@ class TestMoorchehVectorStore(unittest.TestCase):
         result = self.store.delete(ids=None)
         self.assertFalse(result)
 
+    def test_delete_namespace(self) -> None:
+        """Test the delete_namespace method."""
+        # Mock the delete_namespace method on the client
+        self.store._client.delete_namespace = MagicMock()
+        self.store._client.delete_namespace.return_value = None
+
+        result = self.store.delete_namespace()
+        self.assertTrue(result)
+        self.store._client.delete_namespace.assert_called_once_with(
+            namespace_name=self.store.namespace
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
