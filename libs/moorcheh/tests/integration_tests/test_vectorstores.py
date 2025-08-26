@@ -34,6 +34,7 @@ class TestMoorchehVectorStore(VectorStoreIntegrationTests):
             yield store
         finally:
             try:
-                store.delete()
+                # Use delete_namespace for proper cleanup
+                store.delete_namespace()
             except Exception:
                 pass
