@@ -1,7 +1,9 @@
 # Import all the necessary files and packages
 import asyncio
+import json
 import logging
 import os
+import re
 from typing import Any, List, Literal, Optional, Sequence, Tuple, Type, TypeVar
 from uuid import uuid4
 
@@ -480,17 +482,71 @@ class MoorchehVectorStore(VectorStore):
             return [by_id[str(i)] for i in ids if str(i) in by_id]
         except APIError as e:
             # Check if this is a Status 207 (partial success) case
-            if "207" in str(
-                e
-            ) or "Unexpected response format from get documents endpoint" in str(e):
-                # Status 207 means partial success - SDK treats as error
+            if "207" in str(e) or "partial" in str(e).lower():
+                # Status 207 means partial success - try to extract partial results
                 try:
-                    logger.warning(f"Status 207 received but SDK treated as error: {e}")
+                    logger.warning(f"Status 207 received (partial success): {e}")
+
+                    # Try to extract partial results from the error response
+                    # The error might contain the partial response data
+                    error_str = str(e)
+
+                    # Try to find JSON content in the error message
+                    json_match = re.search(r"\{.*\}", error_str, re.DOTALL)
+                    if json_match:
+                        try:
+                            partial_response = json.loads(json_match.group())
+                            items = partial_response.get("items", [])
+
+                            if items:
+                                partial_docs: List[Document] = []
+                                for item in items:
+                                    # Obtain content
+                                    text = item.get("text") or ""
+                                    raw_metadata = item.get("metadata") or {}
+                                    metadata = (
+                                        raw_metadata.get("metadata", raw_metadata)
+                                        if isinstance(raw_metadata, dict)
+                                        else {}
+                                    )
+
+                                    # Normalize id
+                                    doc_id = item.get("id")
+                                    doc_id = str(doc_id) if doc_id is not None else None
+
+                                    # Append to LangChain Document list
+                                    partial_docs.append(
+                                        Document(
+                                            page_content=text,
+                                            metadata=metadata,
+                                            id=doc_id,
+                                        )
+                                    )
+
+                            # Preserve input order for found documents
+                            by_id = {
+                                doc.id: doc
+                                for doc in partial_docs
+                                if doc.id is not None
+                            }
+                            return [by_id[str(i)] for i in ids if str(i) in by_id]
+                        except (json.JSONDecodeError, KeyError, TypeError):
+                            logger.warning(
+                                "Could not parse partial response from Status 207"
+                            )
+
+                    # If we can't extract partial results, return empty list
                     return []
-                except Exception:
-                    # If we can't parse the response, return empty list
-                    logger.warning(f"Could not parse Status 207 response: {e}")
+
+                except Exception as parse_error:
+                    logger.warning(
+                        f"Could not parse Status 207 response: {parse_error}"
+                    )
                     return []
+            elif "Unexpected response format from get documents endpoint" in str(e):
+                # This might also be a partial success case
+                logger.warning(f"Unexpected response format error: {e}")
+                return []
             # For other API errors, re-raise
             logger.error(f"APIError in get_by_ids: {e}")
             raise
@@ -772,11 +828,69 @@ class MoorchehVectorStore(VectorStore):
             )
         except APIError as e:
             # Check if this is a Status 207 (partial success) case
-            if "207" in str(
-                e
-            ) or "Unexpected response format from get documents endpoint" in str(e):
-                # Status 207 means partial success - SDK treats as error
-                logger.warning(f"Status 207 received but SDK treated as error: {e}")
+            if "207" in str(e) or "partial" in str(e).lower():
+                # Status 207 means partial success - try to extract partial results
+                try:
+                    logger.warning(f"Status 207 received (partial success): {e}")
+
+                    # Try to extract partial results from the error response
+                    # The error might contain the partial response data
+                    error_str = str(e)
+
+                    # Try to find JSON content in the error message
+                    json_match = re.search(r"\{.*\}", error_str, re.DOTALL)
+                    if json_match:
+                        try:
+                            partial_response = json.loads(json_match.group())
+                            items = partial_response.get("items", [])
+
+                            if items:
+                                async_docs: List[Document] = []
+                                for item in items:
+                                    text = item.get("text") or ""
+
+                                    raw_metadata = item.get("metadata") or {}
+                                    metadata = (
+                                        raw_metadata.get("metadata", raw_metadata)
+                                        if isinstance(raw_metadata, dict)
+                                        else {}
+                                    )
+
+                                    # id normalization
+                                    doc_id = item.get("id")
+                                    doc_id = str(doc_id) if doc_id is not None else None
+
+                                    async_docs.append(
+                                        Document(
+                                            page_content=text,
+                                            metadata=metadata,
+                                            id=doc_id,
+                                        )
+                                    )
+
+                                # preserve input order for found documents
+                                by_id = {
+                                    doc.id: doc
+                                    for doc in async_docs
+                                    if doc.id is not None
+                                }
+                                return [by_id[str(i)] for i in ids if str(i) in by_id]
+                        except (json.JSONDecodeError, KeyError, TypeError):
+                            logger.warning(
+                                "Could not parse partial response from Status 207"
+                            )
+
+                    # If we can't extract partial results, return empty list
+                    return []
+
+                except Exception as parse_error:
+                    logger.warning(
+                        f"Could not parse Status 207 response: {parse_error}"
+                    )
+                    return []
+            elif "Unexpected response format from get documents endpoint" in str(e):
+                # This might also be a partial success case
+                logger.warning(f"Unexpected response format error: {e}")
                 return []
             # For other API errors, re-raise
             raise
