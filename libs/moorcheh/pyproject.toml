@@ -6,22 +6,26 @@ build-backend = "poetry.core.masonry.api"
 name = "langchain-moorcheh"
 version = "0.1.1"
 description = "An integration package connecting Moorcheh and LangChain"
-authors = []
+authors = ["Moorcheh AI <support@moorcheh.ai>"]
 readme = "README.md"
-repository = "https://github.com/langchain-ai/langchain-moorcheh"
+repository = "https://github.com/moorcheh-ai/langchain-moorcheh"
 license = "MIT"
-
-[project]
-name = "langchain-moorcheh"
-version = "0.1.1"
-description = "An integration package connecting Moorcheh and LangChain"
+keywords = ["langchain", "moorcheh", "vectorstore", "ai", "embeddings"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 
 [tool.mypy]
 disallow_untyped_defs = "True"
 
 [tool.poetry.urls]
-"Source Code" = "https://github.com/langchain-ai/langchain-moorcheh"
-"Release Notes" = "https://github.com/langchain-ai/langchain-moorcheh/releases"
+"Source Code" = "https://github.com/moorcheh-ai/langchain-moorcheh"
+"Release Notes" = "https://github.com/moorcheh-ai/langchain-moorcheh/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
