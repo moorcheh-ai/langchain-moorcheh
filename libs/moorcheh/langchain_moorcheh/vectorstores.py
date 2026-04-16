@@ -708,12 +708,8 @@ class MoorchehVectorStore(VectorStore):
                 "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
-        search_results = await asyncio.to_thread(
-            self._search,
-            namespaces=[self.namespace],
-            query=query,
-            top_k=k,
-            **kwargs,
+        search_results = await self._async_search_with_retries(
+            query=query, k=k, **kwargs
         )
 
         results = search_results.get("results", []) or []
@@ -748,12 +744,8 @@ class MoorchehVectorStore(VectorStore):
                 "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
-        search_results = await asyncio.to_thread(
-            self._search,
-            namespaces=[self.namespace],
-            query=query,
-            top_k=k,
-            **kwargs,
+        search_results = await self._async_search_with_retries(
+            query=query, k=k, **kwargs
         )
 
         results = search_results.get("results", []) or []
@@ -798,6 +790,30 @@ class MoorchehVectorStore(VectorStore):
             **kwargs,
         )
         return result.get("answer", "")
+
+    async def _async_search_with_retries(
+        self, query: str, k: int, **kwargs: Any
+    ) -> dict:
+        """Retry async search briefly to tolerate indexing propagation delay."""
+        retries = int(kwargs.pop("consistency_retries", 3))
+        retry_delay = float(kwargs.pop("consistency_retry_delay", 0.5))
+
+        # Vector namespaces typically don't need indexing retries.
+        if self.namespace_type == "vector":
+            retries = 1
+
+        search_results: dict = {}
+        for attempt in range(max(1, retries)):
+            search_results = await asyncio.to_thread(
+                self._search,
+                namespaces=[self.namespace],
+                query=query,
+                top_k=k,
+                **kwargs,
+            )
+            if attempt < retries - 1:
+                await asyncio.sleep(retry_delay)
+        return search_results
 
     async def aget_by_ids(self, ids: Sequence[str]) -> List[Document]:
         if not ids:
