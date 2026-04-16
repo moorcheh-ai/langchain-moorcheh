@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "langchain-moorcheh"
-version = "0.1.1"
+version = "0.1.2"
 description = "An integration package connecting Moorcheh and LangChain"
 authors = ["Moorcheh AI <support@moorcheh.ai>"]
 readme = "README.md"
