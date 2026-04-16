@@ -1,9 +1,11 @@
 # Import all the necessary files and packages
 import asyncio
+import inspect
 import json
 import logging
 import os
 import re
+import time
 from typing import Any, List, Literal, Optional, Sequence, Tuple, Type, TypeVar
 from uuid import uuid4
 
@@ -57,7 +59,7 @@ class MoorchehVectorStore(VectorStore):
         self.batch_size = batch_size
 
         try:
-            namespaces_response = self._client.list_namespaces()
+            namespaces_response = self._list_namespaces()
             namespaces_names = [
                 ns["namespace_name"] for ns in namespaces_response.get("namespaces", [])
             ]
@@ -74,7 +76,7 @@ class MoorchehVectorStore(VectorStore):
         else:
             logger.info(f"Namespace '{self.namespace}' not found. Creating it.")
             try:
-                self._client.create_namespace(
+                self._create_namespace(
                     namespace_name=self.namespace,
                     type=self.namespace_type,
                     vector_dimension=self.vector_dimension,
@@ -174,7 +176,7 @@ class MoorchehVectorStore(VectorStore):
             assigned_ids.append(doc_id)
 
         # uploads the documents to moorcheh sdk
-        self._client.upload_documents(
+        self._upload_documents(
             namespace_name=self.namespace,
             documents=moorcheh_docs_to_upload,
         )
@@ -228,7 +230,7 @@ class MoorchehVectorStore(VectorStore):
             assigned_ids.append(vector_id)
 
         # uploads the vectors to moorcheh sdk
-        self._client.upload_vectors(
+        self._upload_vectors(
             namespace_name=self.namespace,
             vectors=moorcheh_vector_to_upload,
         )
@@ -249,17 +251,15 @@ class MoorchehVectorStore(VectorStore):
             # if namespace type is text, delete documents.
             if self.namespace_type == "text":
                 logger.info(
-                    f"Deleting {len(ids)} documents from Moorcheh "
-                    "(text namespace)..."
+                    f"Deleting {len(ids)} documents from Moorcheh (text namespace)..."
                 )
-                self._client.delete_documents(namespace_name=self.namespace, ids=ids)
+                self._delete_documents(namespace_name=self.namespace, ids=ids)
             # if namespace type is vector, delete vectors.
             elif self.namespace_type == "vector":
                 logger.info(
-                    f"Deleting {len(ids)} vectors from Moorcheh "
-                    "(vector namespace)..."
+                    f"Deleting {len(ids)} vectors from Moorcheh (vector namespace)..."
                 )
-                self._client.delete_vectors(namespace_name=self.namespace, ids=ids)
+                self._delete_vectors(namespace_name=self.namespace, ids=ids)
             # if any other type, raise value error.
             else:
                 raise ValueError(f"Unsupported namespace type: {self.namespace_type}")
@@ -282,21 +282,10 @@ class MoorchehVectorStore(VectorStore):
                 f"Deleting namespace '{self.namespace}' and all its contents..."
             )
 
-            # Try to delete the namespace using the client
-            # Note: This assumes the Moorcheh SDK has a delete_namespace method
-            # If it doesn't exist, we'll need to implement an alternative cleanup
-            # strategy
             try:
-                self._client.delete_namespace(namespace_name=self.namespace)
+                self._delete_namespace(namespace_name=self.namespace)
                 logger.info(f"Successfully deleted namespace '{self.namespace}'")
                 return True
-            except AttributeError:
-                # If delete_namespace method doesn't exist, log warning
-                logger.warning(
-                    "delete_namespace method not available on client. "
-                    "Manual cleanup may be required."
-                )
-                return False
             except Exception as e:
                 logger.error(f"Failed to delete namespace '{self.namespace}': {e}")
                 return False
@@ -322,9 +311,7 @@ class MoorchehVectorStore(VectorStore):
                     )
 
             # Call SDK for search
-            search_results = self._client.search(
-                namespaces=[self.namespace], query=query, top_k=k, **kwargs
-            )
+            search_results = self._search_with_retries(query=query, k=k, **kwargs)
 
             # Obtains results
             results = search_results.get("results", []) or []
@@ -374,9 +361,7 @@ class MoorchehVectorStore(VectorStore):
                     )
 
             # Call SDK for search
-            search_results = self._client.search(
-                namespaces=[self.namespace], query=query, top_k=k, **kwargs
-            )
+            search_results = self._search_with_retries(query=query, k=k, **kwargs)
 
             # Obtains results
             results = search_results.get("results", []) or []
@@ -428,7 +413,7 @@ class MoorchehVectorStore(VectorStore):
                 )
 
             # Call SDK for get generative answer endpoint
-            result = self._client.get_generative_answer(
+            result = self._generate_answer(
                 namespace=self.namespace,
                 query=query,
                 top_k=k,
@@ -452,7 +437,7 @@ class MoorchehVectorStore(VectorStore):
 
         try:
             # Call sdk to get documents
-            response = self._client.get_documents(
+            response = self._get_documents(
                 namespace_name=self.namespace,
                 ids=ids,
             )
@@ -569,7 +554,7 @@ class MoorchehVectorStore(VectorStore):
                 f"Deleting {len(ids)} documents from Moorcheh (text namespace)..."
             )
             await asyncio.to_thread(
-                self._client.delete_documents,
+                self._delete_documents,
                 namespace_name=self.namespace,
                 ids=ids,
             )
@@ -578,7 +563,7 @@ class MoorchehVectorStore(VectorStore):
                 f"Deleting {len(ids)} vectors from Moorcheh (vector namespace)..."
             )
             await asyncio.to_thread(
-                self._client.delete_vectors,
+                self._delete_vectors,
                 namespace_name=self.namespace,
                 ids=ids,
             )
@@ -657,7 +642,7 @@ class MoorchehVectorStore(VectorStore):
             assigned_ids.append(doc_id)
 
         await asyncio.to_thread(
-            self._client.upload_documents,
+            self._upload_documents,
             namespace_name=self.namespace,
             documents=moorcheh_docs_to_upload,
         )
@@ -703,7 +688,7 @@ class MoorchehVectorStore(VectorStore):
             assigned_ids.append(vector_id)
 
         await asyncio.to_thread(
-            self._client.upload_vectors,
+            self._upload_vectors,
             namespace_name=self.namespace,
             vectors=moorcheh_vector_to_upload,
         )
@@ -717,16 +702,11 @@ class MoorchehVectorStore(VectorStore):
     ) -> List[Document]:
         if self.namespace_type == "vector" and isinstance(query, str):
             raise ValueError(
-                "In a 'vector' namespace, query must be an embedded "
-                "vector (not text)."
+                "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
-        search_results = await asyncio.to_thread(
-            self._client.search,
-            namespaces=[self.namespace],
-            query=query,
-            top_k=k,
-            **kwargs,
+        search_results = await self._async_search_with_retries(
+            query=query, k=k, **kwargs
         )
 
         results = search_results.get("results", []) or []
@@ -758,16 +738,11 @@ class MoorchehVectorStore(VectorStore):
         # same namespace guard as sync
         if self.namespace_type == "vector" and isinstance(query, str):
             raise ValueError(
-                "In a 'vector' namespace, query must be an embedded "
-                "vector (not text)."
+                "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
-        search_results = await asyncio.to_thread(
-            self._client.search,
-            namespaces=[self.namespace],
-            query=query,
-            top_k=k,
-            **kwargs,
+        search_results = await self._async_search_with_retries(
+            query=query, k=k, **kwargs
         )
 
         results = search_results.get("results", []) or []
@@ -804,7 +779,7 @@ class MoorchehVectorStore(VectorStore):
             raise ValueError("generative_answer is only valid for 'text' namespaces.")
 
         result = await asyncio.to_thread(
-            self._client.get_generative_answer,
+            self._generate_answer,
             namespace=self.namespace,
             query=query,
             top_k=k,
@@ -812,6 +787,30 @@ class MoorchehVectorStore(VectorStore):
             **kwargs,
         )
         return result.get("answer", "")
+
+    async def _async_search_with_retries(
+        self, query: str, k: int, **kwargs: Any
+    ) -> dict:
+        """Retry async search briefly to tolerate indexing propagation delay."""
+        retries = int(kwargs.pop("consistency_retries", 3))
+        retry_delay = float(kwargs.pop("consistency_retry_delay", 0.5))
+
+        # Vector namespaces typically don't need indexing retries.
+        if self.namespace_type == "vector":
+            retries = 1
+
+        search_results: dict = {}
+        for attempt in range(max(1, retries)):
+            search_results = await asyncio.to_thread(
+                self._search,
+                namespaces=[self.namespace],
+                query=query,
+                top_k=k,
+                **kwargs,
+            )
+            if attempt < retries - 1:
+                await asyncio.sleep(retry_delay)
+        return search_results
 
     async def aget_by_ids(self, ids: Sequence[str]) -> List[Document]:
         if not ids:
@@ -822,7 +821,7 @@ class MoorchehVectorStore(VectorStore):
 
         try:
             response = await asyncio.to_thread(
-                self._client.get_documents,
+                self._get_documents,
                 namespace_name=self.namespace,
                 ids=ids,
             )
@@ -917,3 +916,112 @@ class MoorchehVectorStore(VectorStore):
         # preserve input order
         by_id = {doc.id: doc for doc in docs if doc.id is not None}
         return [by_id[str(i)] for i in ids if str(i) in by_id]
+
+    def _resolve_api(self, *path: str) -> Optional[Any]:
+        current: Any = self._client
+        for part in path:
+            if not hasattr(current, part):
+                return None
+            current = getattr(current, part)
+        return current
+
+    def _call_with_supported_kwargs(self, fn: Any, **kwargs: Any) -> Any:
+        try:
+            signature = inspect.signature(fn)
+            if any(
+                param.kind == inspect.Parameter.VAR_KEYWORD
+                for param in signature.parameters.values()
+            ):
+                return fn(**kwargs)
+            accepted = {
+                key: value
+                for key, value in kwargs.items()
+                if key in signature.parameters
+            }
+            return fn(**accepted)
+        except (ValueError, TypeError):
+            return fn(**kwargs)
+
+    def _list_namespaces(self) -> dict:
+        namespaced = self._resolve_api("namespaces", "list")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced)
+        raise AttributeError("Missing required SDK API: namespaces.list")
+
+    def _create_namespace(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("namespaces", "create")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: namespaces.create")
+
+    def _upload_documents(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("documents", "upload")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: documents.upload")
+
+    def _upload_vectors(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("vectors", "upload")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: vectors.upload")
+
+    def _delete_documents(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("documents", "delete")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: documents.delete")
+
+    def _delete_vectors(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("vectors", "delete")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: vectors.delete")
+
+    def _delete_namespace(self, namespace_name: str) -> Any:
+        namespaced = self._resolve_api("namespaces", "delete")
+        if callable(namespaced):
+            try:
+                return self._call_with_supported_kwargs(
+                    namespaced, namespace_name=namespace_name
+                )
+            except TypeError:
+                return namespaced(namespace_name)
+        raise AttributeError("Missing required SDK API: namespaces.delete")
+
+    def _search(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("similarity_search", "query")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: similarity_search.query")
+
+    def _search_with_retries(self, query: str, k: int, **kwargs: Any) -> dict:
+        retries = int(kwargs.pop("consistency_retries", 3))
+        retry_delay = float(kwargs.pop("consistency_retry_delay", 0.5))
+
+        if self.namespace_type == "vector":
+            retries = 1
+
+        search_results: dict = {}
+        for attempt in range(max(1, retries)):
+            search_results = self._search(
+                namespaces=[self.namespace],
+                query=query,
+                top_k=k,
+                **kwargs,
+            )
+            if attempt < retries - 1:
+                time.sleep(retry_delay)
+        return search_results
+
+    def _generate_answer(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("answer", "generate")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: answer.generate")
+
+    def _get_documents(self, **kwargs: Any) -> Any:
+        namespaced = self._resolve_api("documents", "get")
+        if callable(namespaced):
+            return self._call_with_supported_kwargs(namespaced, **kwargs)
+        raise AttributeError("Missing required SDK API: documents.get")

@@ -1,6 +1,6 @@
 # 🦜️🔗 LangChain Moorcheh
 
-This repository contains the LangChain integration with Moorcheh, a powerful vector database for AI applications.
+This repository contains the LangChain integration with Moorcheh, a vector database for AI applications.
 
 ## Installation
 
@@ -15,6 +15,8 @@ Set your Moorcheh API key as an environment variable:
 ```bash
 export MOORCHEH_API_KEY="your-api-key"
 ```
+
+Moorcheh SDK docs: [Python SDK Introduction](https://docs.moorcheh.ai/python-sdk/introduction)
 
 ## Vector Stores
 
@@ -31,6 +33,12 @@ vector_store = MoorchehVectorStore.from_texts(
     namespace_type=NAMESPACE_TYPE,
 )
 ```
+
+This integration uses the new module-based Moorcheh SDK methods:
+- `namespaces.create`
+- `documents.upload`
+- `similarity_search.query`
+- `answer.generate`
 
 ## Features
 

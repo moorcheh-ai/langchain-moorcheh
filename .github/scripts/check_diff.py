@@ -31,7 +31,14 @@ if __name__ == "__main__":
             dirs_to_run["test"].update(LIB_DIRS)
 
         # Check if file is in the main package directory or tests
-        if any(file.startswith(dir_) for dir_ in ["libs/moorcheh/langchain_moorcheh/", "libs/moorcheh/tests/", "libs/moorcheh/docs/"]):
+        if any(
+            file.startswith(dir_)
+            for dir_ in [
+                "libs/moorcheh/langchain_moorcheh/",
+                "libs/moorcheh/tests/",
+                "libs/moorcheh/docs/",
+            ]
+        ):
             dirs_to_run["test"].add("libs/moorcheh")
         elif file.startswith("libs/"):
             # This is now expected for our structure
