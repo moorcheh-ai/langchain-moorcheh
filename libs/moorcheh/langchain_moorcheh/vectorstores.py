@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, List, Literal, Optional, Sequence, Tuple, Type, TypeVar
 from uuid import uuid4
 
@@ -310,9 +311,7 @@ class MoorchehVectorStore(VectorStore):
                     )
 
             # Call SDK for search
-            search_results = self._search(
-                namespaces=[self.namespace], query=query, top_k=k, **kwargs
-            )
+            search_results = self._search_with_retries(query=query, k=k, **kwargs)
 
             # Obtains results
             results = search_results.get("results", []) or []
@@ -362,9 +361,7 @@ class MoorchehVectorStore(VectorStore):
                     )
 
             # Call SDK for search
-            search_results = self._search(
-                namespaces=[self.namespace], query=query, top_k=k, **kwargs
-            )
+            search_results = self._search_with_retries(query=query, k=k, **kwargs)
 
             # Obtains results
             results = search_results.get("results", []) or []
@@ -997,6 +994,25 @@ class MoorchehVectorStore(VectorStore):
         if callable(namespaced):
             return self._call_with_supported_kwargs(namespaced, **kwargs)
         raise AttributeError("Missing required SDK API: similarity_search.query")
+
+    def _search_with_retries(self, query: str, k: int, **kwargs: Any) -> dict:
+        retries = int(kwargs.pop("consistency_retries", 3))
+        retry_delay = float(kwargs.pop("consistency_retry_delay", 0.5))
+
+        if self.namespace_type == "vector":
+            retries = 1
+
+        search_results: dict = {}
+        for attempt in range(max(1, retries)):
+            search_results = self._search(
+                namespaces=[self.namespace],
+                query=query,
+                top_k=k,
+                **kwargs,
+            )
+            if attempt < retries - 1:
+                time.sleep(retry_delay)
+        return search_results
 
     def _generate_answer(self, **kwargs: Any) -> Any:
         namespaced = self._resolve_api("answer", "generate")
