@@ -250,15 +250,13 @@ class MoorchehVectorStore(VectorStore):
             # if namespace type is text, delete documents.
             if self.namespace_type == "text":
                 logger.info(
-                    f"Deleting {len(ids)} documents from Moorcheh "
-                    "(text namespace)..."
+                    f"Deleting {len(ids)} documents from Moorcheh (text namespace)..."
                 )
                 self._delete_documents(namespace_name=self.namespace, ids=ids)
             # if namespace type is vector, delete vectors.
             elif self.namespace_type == "vector":
                 logger.info(
-                    f"Deleting {len(ids)} vectors from Moorcheh "
-                    "(vector namespace)..."
+                    f"Deleting {len(ids)} vectors from Moorcheh (vector namespace)..."
                 )
                 self._delete_vectors(namespace_name=self.namespace, ids=ids)
             # if any other type, raise value error.
@@ -559,9 +557,9 @@ class MoorchehVectorStore(VectorStore):
                 f"Deleting {len(ids)} documents from Moorcheh (text namespace)..."
             )
             await asyncio.to_thread(
-            self._delete_documents,
-            namespace_name=self.namespace,
-            ids=ids,
+                self._delete_documents,
+                namespace_name=self.namespace,
+                ids=ids,
             )
         elif self.namespace_type == "vector":
             logger.info(
@@ -707,8 +705,7 @@ class MoorchehVectorStore(VectorStore):
     ) -> List[Document]:
         if self.namespace_type == "vector" and isinstance(query, str):
             raise ValueError(
-                "In a 'vector' namespace, query must be an embedded "
-                "vector (not text)."
+                "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
         search_results = await asyncio.to_thread(
@@ -748,8 +745,7 @@ class MoorchehVectorStore(VectorStore):
         # same namespace guard as sync
         if self.namespace_type == "vector" and isinstance(query, str):
             raise ValueError(
-                "In a 'vector' namespace, query must be an embedded "
-                "vector (not text)."
+                "In a 'vector' namespace, query must be an embedded vector (not text)."
             )
 
         search_results = await asyncio.to_thread(

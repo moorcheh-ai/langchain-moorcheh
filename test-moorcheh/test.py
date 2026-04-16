@@ -25,10 +25,7 @@ print("🚀 Starting Moorcheh + LangChain full demo...")
 print(f"📦 Creating/checking namespace: {NAMESPACE_NAME}")
 try:
     with MoorchehClient(api_key=MOORCHEH_API_KEY) as client:
-        client.namespaces.create(
-            namespace_name=NAMESPACE_NAME,
-            type=NAMESPACE_TYPE
-        )
+        client.namespaces.create(namespace_name=NAMESPACE_NAME, type=NAMESPACE_TYPE)
     print(f"✅ Namespace '{NAMESPACE_NAME}' is ready!")
 except Exception as e:
     # Namespace might already exist - that's fine, continue
@@ -38,9 +35,7 @@ except Exception as e:
 # 3. INITIALIZE LANGCHAIN VECTOR STORE
 # ============================
 store = MoorchehVectorStore(
-    api_key=MOORCHEH_API_KEY,
-    namespace=NAMESPACE_NAME,
-    namespace_type=NAMESPACE_TYPE
+    api_key=MOORCHEH_API_KEY, namespace=NAMESPACE_NAME, namespace_type=NAMESPACE_TYPE
 )
 print("✅ MoorchehVectorStore initialized!")
 
@@ -127,7 +122,7 @@ print("\n🧠 Generating AI answer...")
 query = "Give me a brief summary of the provided documents"
 answer = store.generative_answer(
     query=query,
-    ai_model="anthropic.claude-sonnet-4-5-20250929-v1:0"   # You can change to any supported model
+    ai_model="anthropic.claude-sonnet-4-5-20250929-v1:0",  # You can change to any supported model
 )
 print(f"\n📝 Question: {query}")
 print(f"Answer:\n{answer}")
@@ -138,4 +133,6 @@ print(f"Answer:\n{answer}")
 # print("\n🗑️  Deleting first document as example...")
 # store.delete(ids=[uuids[0]])
 
-print("\n🎉 Full demo completed! You now have a working Moorcheh + LangChain vector store.")
+print(
+    "\n🎉 Full demo completed! You now have a working Moorcheh + LangChain vector store."
+)
